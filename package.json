@@ -1,0 +1,36 @@
+{
+  "name": "youtube-music-gtk",
+  "version": "1.0.0",
+  "description": "gtk+ frontend for youtube (google) music",
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/misterhat/youtube-music-gtk.git"
+  },
+  "keywords": [
+    "youtube",
+    "google",
+    "music",
+    "gtk"
+  ],
+  "author": "Zorian Medwid <misterhat144@gmail.com>",
+  "license": "GPL-3.0+",
+  "bugs": {
+    "url": "https://github.com/misterhat/youtube-music-gtk/issues"
+  },
+  "homepage": "https://github.com/misterhat/youtube-music-gtk#readme",
+  "dependencies": {
+    "better-sqlite3": "^7.1.4",
+    "concat-stream": "^2.0.0",
+    "ffmpeg-stream": "^0.7.0",
+    "global-cache-dir": "^2.0.0",
+    "mkdirp": "^1.0.4",
+    "node-gtk": "^0.7.0",
+    "speaker": "^0.5.3",
+    "throttle-stream": "^0.0.8",
+    "ytdl-core": "^4.5.0"
+  }
+}
