@@ -139,7 +139,7 @@ class YoutubeMusicGTK {
             this.currentTrackPosition += 1;
 
             if (!this.isSeeking) {
-                this.gui.durationAdjustment.setValue(this.currentTrackPosition);
+                this.gui.setDuration(this.currentTrackPosition);
             }
         }
 

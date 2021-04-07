@@ -2,6 +2,8 @@
 
 gtk+ frontend for [youtube (google) music](https://music.youtube.com).
 
+![](./screenshot.png?raw=true)
+
 ## install
 
     # apt install ffmpeg libasound2-dev

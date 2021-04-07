@@ -11,8 +11,15 @@ const UI_XML = fs.readFileSync(__dirname + '/ui.glade').toString();
 gi.startLoop();
 Gtk.init();
 
-const settings = Gtk.Settings.getDefault();
-settings.gtkApplicationPreferDarkTheme = true;
+// seconds -> minutes:seconds
+function formatDuration(duration) {
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration - minutes * 60;
+
+    return `${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
 
 class GUI {
     constructor(ytMusicGTK) {
@@ -25,11 +32,15 @@ class GUI {
         };
 
         this.window = this.builder.getObject('root-window');
+
+        this.durationLabel = this.builder.getObject('duration-label');
         this.durationAdjustment = this.builder.getObject('duration-adjustment');
     }
 
     addSearchResult(track) {
         const iter = this.stores.searchResults.append();
+
+        track = { ...track, duration: formatDuration(track.duration) };
 
         for (const [index, columnName] of Object.entries(SEARCH_COLUMNS)) {
             const column = new GObject.Value();
@@ -65,13 +76,23 @@ class GUI {
 
     setDuration(current, max) {
         if (typeof max !== 'undefined') {
-            this.durationAdjustment.setUpper(max);
+            this.maxDuration = max;
+            this.durationAdjustment.setUpper(this.maxDuration);
         }
 
         this.durationAdjustment.setValue(current);
+
+        this.durationLabel.setText(
+            `${formatDuration(current)} / ${formatDuration(this.maxDuration)}`
+        );
     }
 
     init() {
+        const settings = Gtk.Settings.getDefault();
+        settings.gtkApplicationPreferDarkTheme = true;
+
+        this.window.setDefaultSize(640, 480);
+
         this.window.on('destroy', () => {
             this.ytMusicGTK.quit();
             Gtk.mainQuit();
