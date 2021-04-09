@@ -1,5 +1,6 @@
 const GUI = require('./gui');
 const Speaker = require('speaker');
+const Volume = require('pcm-volume');
 const concat = require('concat-stream');
 const fs = require('fs');
 const globalCacheDir = require('global-cache-dir');
@@ -9,8 +10,10 @@ const stream = require('stream');
 const ytMusic = require('node-youtube-music').default;
 const ytdl = require('ytdl-core');
 const { Converter } = require('ffmpeg-stream');
+const cp = require('child_process');
 
 const BPS = 176400; // bytes per second
+const PCM_INTERVAL = 1000;
 
 class YoutubeMusicGTK {
     constructor() {
@@ -19,25 +22,28 @@ class YoutubeMusicGTK {
         this.speaker = new Speaker({
             channels: 2,
             bitDepth: 16,
-            sampleRate: 44100,
-            samplesPerFrame: 176400
-            //samplesPerFrame: 176400
+            sampleRate: 44100
         });
+
+        /*const sox = cp.spawn('play', ['-traw', '-r44.1k', '-b16', '-esigned', '-c2', '-']);
+        sox.stdout.on('data', (data) => console.log(data.toString()));
+        sox.stderr.on('data', (data) => console.log(data.toString()));
+        this.speaker = sox.stdin;*/
+
+        this.volume = new Volume();
 
         // [ { id, title, album, artist } ]
         this.searchResultTracks = [];
-        this.queueTracks = [];
-
-        this.isRunning = true;
-
-        // whether or not there's a track playing
-        this.isPlaying = false;
+        this.trackQueue = [];
 
         // { id, title, album, artist }
         this.currentTrack = {};
 
         // position in seconds
         this.currentTrackPosition = 0;
+
+        // whether or not there's a track playing
+        this.isPlaying = false;
 
         // decompressed PCM Buffer
         this.currentTrackPCM = undefined;
@@ -74,7 +80,7 @@ class YoutubeMusicGTK {
 
         fileStream.once('error', () => {
             const downloadStream = ytdl(`https://youtube.com/watch?v=${id}`, {
-                format: 'audioonly'
+                filter: 'audioonly'
             });
 
             downloadStream.pipe(trackStream);
@@ -87,6 +93,8 @@ class YoutubeMusicGTK {
     }
 
     setTrack(track) {
+        this.isPlaying = false;
+
         this.currentTrackPosition = 0;
         this.currentTrack = track;
 
@@ -102,17 +110,19 @@ class YoutubeMusicGTK {
 
         const compressedStream = this.getTrackStream(track.id);
 
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             const pcmConcat = concat((pcmBuffer) => {
                 this.currentTrackPCM = pcmBuffer;
+                console.log(Date.now(), 'done setting track');
                 resolve();
             });
 
             pcmOutputStream.pipe(pcmConcat);
+            //pcmOutputStream.pipe(this.volume);
             compressedStream.pipe(input);
 
             converter.run().then(() => {
-                console.log('done converting');
+                console.log(Date.now(), 'done converting');
             });
         });
     }
@@ -121,11 +131,13 @@ class YoutubeMusicGTK {
         this.isPlaying = true;
     }
 
-    pauseTrack() {}
-
-    setVolume(volume) {}
+    setVolume(volume) {
+        this.volume.setVolume(volume);
+    }
 
     tick() {
+        const delta = Date.now() - this.expected;
+
         if (this.isPlaying && this.currentTrackPCM) {
             // position of the PCM buffer to begin the sample
             const start = BPS * this.currentTrackPosition;
@@ -133,7 +145,20 @@ class YoutubeMusicGTK {
             // buffer of sample we're sending to the speaker
             const pcmChunk = this.currentTrackPCM.slice(start, start + BPS);
 
-            this.speaker.write(pcmChunk);
+            //this.speaker.write(pcmChunk);
+            this.volume.write(pcmChunk);
+
+            if (this.currentTrackPosition === 0) {
+                const start2 = start + BPS;
+
+                // buffer of sample we're sending to the speaker
+                const pcmChunk = this.currentTrackPCM.slice(start2, start2 + BPS);
+
+                //this.speaker.write(pcmChunk);
+                this.volume.write(pcmChunk);
+
+                this.currentTrackPosition += 1;
+            }
 
             // add a second to the song position
             this.currentTrackPosition += 1;
@@ -144,7 +169,8 @@ class YoutubeMusicGTK {
         }
 
         if (this.isRunning) {
-            setTimeout(this.boundTick, 1000);
+            this.expected += PCM_INTERVAL;
+            setTimeout(this.boundTick, Math.max(0, PCM_INTERVAL - delta));
         }
     }
 
@@ -153,12 +179,18 @@ class YoutubeMusicGTK {
     }
 
     async start() {
+        this.volume.pipe(this.speaker);
+
         this.cacheDir = await globalCacheDir('youtube-music-gtk');
 
         await mkdirp(this.cacheDir);
         await mkdirp(path.join(this.cacheDir, 'tracks'));
 
-        this.tick();
+        this.isRunning = true;
+
+        this.expected = Date.now() + PCM_INTERVAL;
+        setTimeout(this.boundTick, PCM_INTERVAL);
+        //this.tick();
         this.gui.init();
     }
 }

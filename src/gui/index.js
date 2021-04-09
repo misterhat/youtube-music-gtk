@@ -6,7 +6,7 @@ const GObject = gi.require('GObject');
 const Gtk = gi.require('Gtk', '3.0');
 
 const SEARCH_COLUMNS = ['title', 'artist', 'album', 'duration'];
-const UI_XML = fs.readFileSync(__dirname + '/ui.glade').toString();
+const UI_XML = fs.readFileSync(__dirname + '/ui.glade', 'utf8');
 
 gi.startLoop();
 Gtk.init();
@@ -35,6 +35,9 @@ class GUI {
 
         this.durationLabel = this.builder.getObject('duration-label');
         this.durationAdjustment = this.builder.getObject('duration-adjustment');
+
+        this.playButton = this.builder.getObject('play-button');
+        this.volumeButton = this.builder.getObject('volume-button');
     }
 
     addSearchResult(track) {
@@ -134,7 +137,10 @@ class GUI {
                 const [index] = path.getIndices();
 
                 const track = this.ytMusicGTK.searchResultTracks[index];
+
+                this.playButton.sensitive = false;
                 await this.ytMusicGTK.setTrack(track);
+                this.playButton.sensitive = true;
 
                 this.ytMusicGTK.playTrack();
             },
@@ -148,6 +154,10 @@ class GUI {
             },
             onPlayButtonClicked: () => {
                 this.ytMusicGTK.isPlaying = !this.ytMusicGTK.isPlaying;
+            },
+            onVolumeValueChanged: () => {
+                const volume = this.volumeButton.getValue();
+                this.ytMusicGTK.setVolume(volume);
             }
         });
 
