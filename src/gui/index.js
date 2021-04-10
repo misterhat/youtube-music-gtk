@@ -149,11 +149,15 @@ class GUI {
             },
             onDurationScaleButtonRelease: () => {
                 const position = Math.floor(this.durationAdjustment.getValue());
-                this.ytMusicGTK.currentTrackPosition = position;
+                this.ytMusicGTK.setTrackPosition(position);
                 this.ytMusicGTK.isSeeking = false;
             },
             onPlayButtonClicked: () => {
                 this.ytMusicGTK.isPlaying = !this.ytMusicGTK.isPlaying;
+
+                if (this.ytMusicGTK.isPlaying) {
+                    this.ytMusicGTK.pcmFirstFlush = true;
+                }
             },
             onVolumeValueChanged: () => {
                 const volume = this.volumeButton.getValue();
